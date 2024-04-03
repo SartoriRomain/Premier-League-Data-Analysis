@@ -64,3 +64,44 @@ predicted_points_ranking = predicted_points_with_teams.sort_values(by='Predicted
 predicted_points_with_teams['Predicted Points'] = predicted_points_with_teams['Predicted Points'].astype(int)
 
 print(predicted_points_ranking)
+
+#We now dive into ploting procedure. 
+
+top_teams = predicted_points.nlargest(5)
+
+#Let's try to do a pie chart on the top5 teams.
+plt.figure(figsize=(8, 8))
+patches, texts, autotexts = plt.pie(top_teams, labels=[''] * len(top_teams), autopct='%1.1f%%', startangle=140)
+
+for i, text in enumerate(autotexts):
+    team_name = top_teams.index[i]
+    text.set_text(f"{team_name}\n({text.get_text()})")
+
+plt.title('Répartition des points prédits des cinq premières équipes')
+plt.show()
+
+top_teams = predicted_points.nlargest(5)
+
+# List of team name linked to their predicted points.
+
+teams = predicted_points_ranking['Team']
+points = predicted_points_ranking['Predicted Points'].tolist()
+predicted_points_with_teams['Predicted Points'] = predicted_points_with_teams['Predicted Points'].astype(int)
+
+# Pie chart with the remaining teams.
+
+plt.figure(figsize=(7, 8))
+plt.pie(points, labels=teams, autopct='%1.1f%%', startangle=140)
+plt.axis('equal')
+plt.title('Prédiction des points pour les équipes restantes')
+plt.show()
+
+# Creating an histogram for all teams.
+plt.figure(figsize=(12, 6))
+plt.hist(predicted_points_ranking['Predicted Points'], bins=10, color='skyblue', edgecolor='black')
+plt.title('Distribution des points prédits pour toutes les équipes')
+plt.xlabel('Points prédits')
+plt.ylabel('Nombre d\'équipes')
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+plt.show()
+

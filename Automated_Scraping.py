@@ -165,6 +165,7 @@ def scrape_premier_league_budgets(url):
 # Exemple of url that could be used.
 url = "https://sportune.20minutes.fr/sport-business/football/les-budgets-des-clubs-de-la-premier-league-2023-2024-312241/2"
 budgets_df = scrape_premier_league_budgets(url)
+budgets_df.rename(columns={'Club': 'team'}, inplace=True)
 print(budgets_df)
 
 
@@ -179,6 +180,7 @@ team_stats_20.replace({'Tottenham Hotspur': 'Tottenham',
 
 # Merging.
 merged_df = pd.merge(budgets_df, team_stats_20, left_on='Club', right_on='team', how='inner')
+print(merged_df)
 
 #Import using relative path.
 merged_df.to_csv('merged_2.csv', index=False)
@@ -190,6 +192,7 @@ merged_df.drop('position', axis=1, inplace=True)
 merged_df['Budget'] = pd.to_numeric(merged_df['Budget'].str.replace('M€', '')) * 1000000
 merged_df.to_csv('merged_df')
 print(merged_df)
+
 
 
 
