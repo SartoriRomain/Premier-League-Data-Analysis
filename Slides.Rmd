@@ -1,0 +1,504 @@
+---
+title: "PL Data Analysis"
+author: "Programmation - M1 APE"
+output:
+  revealjs::revealjs_presentation:
+    theme: 'moon'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## TABLE DES MATIERES
+
+1)  Présentation du sujet et contexte de l'étude
+
+2)  Démarche utilisée
+
+3)  Difficultées
+
+4)  Limites des modeles et du pouvoir prédictif
+
+5)  Ce qui pourrait être amélioré à l'avenir
+
+## PRESENTATION DU SUJET ET CONTEXTE DE L'ETUDE
+
+### Premier League
+
+-   Lorsque nous parlons de premier League, nous faisons référence au championnat national de Football Anglais.
+
+-   C'est le championnat le plus connu au monde, il est considéré comme le plus compliqué car aucune équipe n'a le monopole.
+
+## DEMARCHES UTILISEES ET CODE
+
+### Démarches utilisées
+
+Notre démarche est consitutée de deux étapes :
+
+-   Scrapper différentes informations basiques : les points, victoires, les défaites à travers le temps.
+-   Scrapper des informations en lien avec le championat actuel : Le budget
+-   Tenter d'appliquer des modèles statistiques et faire de la statistique descriptive.
+
+## Code (1/7)
+
+```{python Code1, echo=TRUE, include=TRUE}
+from bs4 import BeautifulSoup
+import urllib3
+import re
+import time
+import requests
+from collections import defaultdict
+import numpy as np
+import tqdm
+import pandas as pd
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+```
+
+## Code (2/7)
+
+### Première fonction
+
+```{python Code2, echo=TRUE, include=TRUE}
+
+urlpage_4 = 'https://www.skysports.com/premier-league-table/2023'
+def get_page(urlpage_4,element,html_class):
+    # avoir la page en html
+    req_5 = urllib3.PoolManager()
+    res_5 = req_5.request('GET', urlpage_4)
+    row_html_5 = BeautifulSoup(res_5.data, 'html.parser')
+    
+    # Renvoie les éléments correspondant à la classe HTML dans une liste
+    PL23 = row_html_5.find_all(element , 
+    class_= html_class)
+    return(PL23)
+
+PL23 = str(get_page(urlpage_4, 'tr', 'row-body'))
+```
+
+```{python Code31, echo=FALSE, include=TRUE, results='hide'}
+list_team_20 = re.findall('<span class="team-name">(.*?)</span>', str(PL23))
+```
+
+## Code (3/7)
+
+### Deuxième fonction
+
+```{python Code32, echo=TRUE, include=TRUE}
+#définir une fonction pour récolté de l'information ssur les équipes
+def lien_PL23 (PL23, team):
+    team= team.title()
+    teams = re.findall('<span class="team-name">(.*?)</span>', 
+    str(PL23))
+    end = PL23.index("</tr>", start)
+    team_data_20 = PL23[start:end]
+    match_played= 38
+    data = [int(s) for s in re.findall(r'<td.*?>(\d+)</td>', team_data_20)]
+    points= data[0]
+    wins= data [1]
+    drawns= data [2]
+    loses =data [3]
+    goals_for = data [4]
+    goals_against = data [5]
+    team_stats20 = {'match_played': match_played,
+    'position': position,'points': points,
+                    'wins': wins,'loses': loses ,
+                    'drawns':  drawns,'goals_for': goals_for,
+        'goals_against':goals_against
+    }
+    return team_stats20
+#on défini un dictionnaire
+team_stats_20 = {}
+
+#On créer une loop pour l'ensemble des équipes
+for team in list_team_20:
+    # obtenir les stats des équipes
+    team_stats = stat23(PL19, team)
+    # on met en dataframe les stats des équipes
+    team_stats_df = pd.DataFrame(team_stats, index=[0])
+    # On crée des noms de variables dans la dataframe
+    team_stats_df['team'] = team
+    team_stats_df['year'] = 2023
+    # On ajoute au dictionnaire la dataframe
+    team_stats_20[team] = team_stats_df
+```
+
+## Code (4/7)
+
+### Deuxième fonction (bis)
+
+#### Scraper d'une autre façon
+
+```{python Code34, echo=TRUE, include=TRUE}
+# on défini une fonction pour scraper d'une autre manière
+def scrape_PL(year):
+    url = f"https://www.skysports.com/premier-league-table/{year}"
+    response = requests.get(url)
+    if response.status_code != 200:
+        print(f"Failed to retrieve data for {year}.")
+        return None
+    soup = BeautifulSoup(response.text, 'html.parser')
+    table = soup.find('table', class_='standing-table__table')
+    if table is None:
+        print("Failed to find the standings table.")
+        return None
+    
+    #On crée une boucle pour définir chaque variables dans le tableau
+    standings_data = []
+    for row in table.find_all('tr')[1:]:
+        columns = row.find_all('td')
+        team_name = columns[1].text.strip()
+        matches_played = int(columns[2].text.strip())
+        wins = int(columns[3].text.strip())
+        draws = int(columns[4].text.strip())
+        losses = int(columns[5].text.strip())
+        goals_for = int(columns[6].text.strip())
+        goals_against = int(columns[7].text.strip())
+        goal_difference = int(columns[8].text.strip())
+        points = int(columns[9].text.strip())
+        #On nome ces variables
+        standings_data.append({
+            'Team': team_name,
+            'Matches Played': matches_played,
+            'Wins': wins,
+            'Draws': draws,
+            'Losses': losses,
+            'Goals For': goals_for,
+            'Goals Against': goals_against,
+            'Goal Difference': goal_difference,
+            'Points': points
+        })
+    
+    return standings_data
+```
+
+## Code (5/7)
+
+### Troisième fonction
+
+```{python Code5, echo=TRUE, include=TRUE}
+def stat23(standings, year):
+    team_stats_20 = {}
+    for team_data in standings:
+        team_name = team_data['Team']
+        stats = extract_team_stats_single(team_data, year)
+        team_stats_df = pd.DataFrame(stats, index=[0])
+        team_stats_df['team'] = team_name
+        team_stats_df['year'] = year
+        team_stats_20[team_name] = team_stats_df
+    
+    if not team_stats_20:
+        print("No data extracted.")
+        return None
+    
+    return pd.concat(team_stats_20.values(), ignore_index=True)
+```
+
+## Code (6/7)
+
+### Quatrième fonction
+
+```{python Code6, echo=TRUE, include=TRUE, results='hide'}
+def extract_team_stats_single(team_data, year):
+    match_played = team_data['Matches Played']
+    points = team_data['Points']
+    wins = team_data['Wins']
+    losses = team_data['Losses']
+    draws = team_data['Draws']
+    goals_for = team_data['Goals For']
+    goals_against = team_data['Goals Against']
+    
+    team_stats = {
+        'year': year,
+        'team': None,  
+        'match_played': match_played,
+        'position': None,  
+        'points': points,
+        'wins': wins,
+        'loses': losses,
+        'drawns': draws,
+        'goals_for': goals_for,
+        'goals_against': goals_against
+    }
+    
+    return team_stats
+  
+year = 2023
+standings = scrape_PL(year)
+if standings:
+    team_stats_20 = stat23(standings, year)
+    print(team_stats_20)
+
+```
+
+## Code (7/7)
+
+### Cinquième fonction
+
+```{python Code7, echo=TRUE, include=TRUE}
+#On défini l'url du site  où l'on trouve le budget pour chaque équipe
+url_7 = "https://sportune.20minutes.fr/sport-business/football/les-budgets-des-clubs-de-la-premier-league-2023-2024-312241/2"
+
+#On crée une fonction pour scraper l'url en faisant attention de se renomer
+def scrape_premier_league_budgets(url):
+    user_agent = {'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'}
+    
+    res = requests.get(url, headers=user_agent)
+    if res.status_code != 200:
+        print("Failed to retrieve data.")
+        return None
+    
+    content = res.text
+    soup = BeautifulSoup(content, "lxml")
+    contents = re.findall('<tbody>.*?\n</tbody>\n</table>', str(soup), re.DOTALL)
+    
+    #On extrait les données que l'on veut
+    all_headers = []
+    for html_content in contents:
+        html_soup = BeautifulSoup(html_content, 'html.parser')    
+        headers = html_soup.find_all("th")    
+        all_headers.extend(headers)
+    
+    Titles = [i.text for i in all_headers]
+    df = pd.DataFrame(columns=Titles)
+    
+    #On ajoute les données dans la liste rows_data
+    all_rows = []
+    for html_content in contents:
+        html_soup = BeautifulSoup(html_content, 'html.parser')
+        rows = html_soup.find_all("tr")
+        rows_data = []
+        for row in rows:
+            cells = row.find_all("td")
+            cell_data = [cell.get_text(strip=True) for cell in cells]
+            rows_data.append(cell_data)
+        all_rows.extend(rows_data)
+    
+    if all_rows:
+        all_rows.pop(-1)
+    #On crée un dataframe pandas
+    df = pd.concat([df, pd.DataFrame(all_rows, columns=Titles)], ignore_index=True)
+    return df
+  
+
+```
+
+```{python Code81, echo=FALSE, include=TRUE, results='hide'}
+from bs4 import BeautifulSoup
+import requests
+import lxml
+
+url = "https://sportune.20minutes.fr/sport-business/football/les-budgets-des-clubs-de-la-premier-league-2023-2024-312241/2"
+response = requests.get(url)
+soup = BeautifulSoup(response.content, 'lxml')
+```
+
+## Diffucltés rencontrées (1/3)
+
+```{python Code8, echo=TRUE, include=TRUE,}
+budgets_df = scrape_premier_league_budgets(url)
+#Renommer la colonne 'team' de team_stats_20 en 'Club' pour faciliter la fusion
+team_stats_20 = team_stats_20.rename(columns={'team': 'Club'})
+```
+
+## Difficultés rencontrées (2/3)
+
+```{python Code86, echo=FALSE, include=TRUE,}
+merged_df = pd.merge(budgets_df, team_stats_20, on='Club', how='inner')
+merged_df.to_csv('merged_2.csv', index=False)
+merged_df.drop('position', axis=1, inplace=True)
+print (merged_df)
+```
+
+## Difficultés rencontrées (2/3)
+
+### BIS
+
+```{python Code9, echo=TRUE, include=TRUE}
+team_stats_20.replace({'Tottenham Hotspur': 'Tottenham',
+                       'Nottingham Forest **': 'Nottingham Forest',
+                       'Everton *': 'Everton',
+                       'West Ham United': 'West Ham',
+                       'Wolverhampton Wanderers': 'Wolverhampton',
+                       'Brighton and Hove Albion': 'Brighton',
+                       'Newcastle United': 'Newcastle'}, inplace=True)
+
+```
+
+```{python Code12, echo=TRUE, include=FALSE, results='hide'}
+#Fusion de nos deux dataframes 
+merged_df = pd.merge(team_stats_20, budgets_df, on='Club', how='inner')
+print(merged_df)
+```
+
+## Difficultés rencontrées (3/3)
+
+```{python Code14, echo=TRUE, include=TRUE}
+# Suppression des caractères indésirables et les convertir en valeurs numériques
+merged_df['Budget'] = pd.to_numeric(merged_df['Budget'].str.replace('M€', '')) * 1000000
+
+# Affichage du DataFrame mis à jour
+print(merged_df)
+```
+
+## Prédiction (1/4)
+
+```{python Code16, echo=TRUE, include=TRUE}
+from sklearn.linear_model import LinearRegression
+#Debut de la regression linéaire 
+X = merged_df[['wins', 'loses', 'drawns', 'goals_for', 'goals_against', 'Budget']]
+y = merged_df['points']
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+model = LinearRegression()
+model.fit(X_train, y_train)
+
+# On souhaite obtenir les performances du modèle sur les données de test
+score = model.score(X_test, y_test)
+print("Coefficient de détermination R^2 :", score)
+```
+
+## Prédiction (2/4)
+
+```{python Code188, echo=TRUE, include=TRUE}
+import statsmodels.api as sm
+# Début de la regression de Poisson
+X = merged_df[['wins', 'loses', 'drawns', 'goals_for', 'goals_against', 'Budget']]
+y = merged_df['points']
+X = sm.add_constant(X)
+```
+
+## Prédiction (2/4)
+
+### BIS
+
+```{python Code1881, echo=FALSE, include=TRUE}
+
+# Créer le modèle de régression de Poisson
+poisson_model = sm.GLM(y, X, family=sm.families.Poisson())
+poisson_results = poisson_model.fit()
+print(poisson_results.summary())
+```
+
+## Prédiction (3/4)
+
+```{python Code191, echo=TRUE, include=TRUE,}
+# Nombre de matchs à prédire
+nb_matchs = 38
+# Coefficients du modèle
+coefficients = poisson_results.params
+# Prédictions des points pour chaque équipe
+predicted_points = poisson_results.predict(X)
+# Calcul des points supplémentaires pour chaque équipe en fonction des résultats de matchs prévus
+predicted_wins_points = coefficients['wins'] * nb_matchs * 3
+predicted_draws_points = coefficients['drawns'] * nb_matchs
+predicted_losses_points = 0  # Les défaites ne contribuent pas aux points
+# Ajouter les points supplémentaires aux prédictions de points
+predicted_points += predicted_wins_points + predicted_draws_points + predicted_losses_points
+# Classer les équipes en fonction des points prédits
+predicted_points_ranking = predicted_points.sort_values(ascending=False)
+```
+
+```{python Code1911, echo=FALSE, include=TRUE, results='hide'}
+
+# Afficher le classement des équipes prédites
+print(predicted_points_ranking)
+```
+
+## Prédiction (3/4)
+
+### BIS
+
+```{python Code20, echo=FALSE, include=TRUE,}
+# Concaténer les noms des équipes avec les prédictions de points
+predicted_points_with_teams = pd.concat([merged_df['Club'], predicted_points], axis=1)
+predicted_points_with_teams.columns = ['Team', 'Predicted Points']
+
+# Classer les équipes en fonction des points prédits
+predicted_points_ranking = predicted_points_with_teams.sort_values(by='Predicted Points', ascending=False)
+predicted_points_with_teams['Predicted Points'] = predicted_points_with_teams['Predicted Points'].astype(int)
+
+# Afficher le classement des équipes prédites avec les noms des équipes
+print(predicted_points_ranking)
+```
+
+```{python Code21, echo=TRUE, include=FALSE, results='hide'}
+# Sélectionnez les cinq premières équipes ayant les points prédits les plus élevés
+top_teams = predicted_points.nlargest(5)
+
+# Créez un camembert pour visualiser la répartition des points prédits entre ces cinq équipes
+plt.figure(figsize=(8, 8))
+patches, texts, autotexts = plt.pie(top_teams, labels=[''] * len(top_teams), autopct='%1.1f%%', startangle=140)
+
+# Ajoutez le nom de l'équipe comme annotation pour chaque tranche
+for i, text in enumerate(autotexts):
+    team_name = top_teams.index[i]
+    text.set_text(f"{team_name}\n({text.get_text()})")
+
+plt.title('Répartition des points prédits des cinq premières équipes')
+plt.show()
+```
+
+## Prédiction (4/4)
+
+```{python Code22, echo=FALSE, include=TRUE}
+import matplotlib.pyplot as plt
+
+top_teams = predicted_points.nlargest(5)
+# Liste des noms des équipes avec leurs points prédits
+teams = predicted_points_ranking['Team']
+points = predicted_points_ranking['Predicted Points'].tolist()
+
+# Création du camembert avec les noms des équipes comme étiquettes
+plt.figure(figsize=(7, 8))
+plt.pie(points, labels=teams, autopct='%1.1f%%', startangle=140)
+plt.axis('equal')
+plt.title('Prédictions des points prédits pour toutes les équipes')
+plt.show()
+```
+
+```{python Code23, echo=FALSE, include=TRUE, results='hide'}
+predicted_points_with_teams['Predicted Points'] = predicted_points_with_teams['Predicted Points'].astype(int)
+import matplotlib.pyplot as plt
+plt.figure(figsize=(12, 6))
+plt.hist(predicted_points_ranking['Predicted Points'], bins=10, color='skyblue', edgecolor='black')
+plt.title('Distribution des points prédits pour toutes les équipes')
+plt.xlabel('Points prédits')
+plt.ylabel('Nombre d\'équipes')
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+```
+
+## Répartition des équipes
+
+### Conforme à la réalité
+
+```{python Code231, echo=FALSE, include=TRUE}
+plt.show()
+```
+
+## LIMITES
+
+### Pouvoir prédictif minime
+
+-   Cela peut s'expliquer par plusieurs facteurs :
+
+-   Des caractéristiques intrinsèques aux joueurs sont inobservables.
+
+-   Le nombre de variables pouvant être prises en compte est beaucoup trop grand.
+
+-   La composition des équipes est changeante.
+
+## PISTES D'AMELIORATION
+
+-   Pour une analyse plus poussée et pourquoi par une prédiction plus 'sensée', il serait intéressant de :
+
+-   Multiplier le nombre et la variété des donneés
+
+-   Essayer d'autres modèles statistiques
+
+-   Il serait intéressant d'automatisé le code de façon à ce qu'il intègre automatiquement des nouvelles données dès que celle-ci seraient disponibles.
+
+## DISCUSSION
