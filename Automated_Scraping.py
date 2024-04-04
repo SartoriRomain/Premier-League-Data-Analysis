@@ -36,14 +36,12 @@ list_team_20 = re.findall('<span class="team-name">(.*?)</span>', str(PL19))
 # team from a given HTML document (PL19). It extracts relevant information such as position, points, wins, draws, losses, 
 # goals scored, and goals conceded, and returns these statistics in a dictionary format.
 
-def extract_team_20_stats(PL19, team):
+def lien_PL23 (PL23, team):
     team= team.title()
     teams = re.findall('<span class="team-name">(.*?)</span>', 
-    str(PL19))
-    position= (list_team_20.index(team)+1)
-    start = PL19.find(team)
-    end = PL19.index("</tr>", start)
-    team_data_20 = PL19[start:end]
+    str(PL23))
+    end = PL23.index("</tr>", start)
+    team_data_20 = PL23[start:end]
     match_played= 38
     data = [int(s) for s in re.findall(r'<td.*?>(\d+)</td>', team_data_20)]
     points= data[0]
@@ -64,18 +62,17 @@ team_stats_20 = {}
 
 # Extracting the team statistics and the adding columns for the team name and the year.
 for team in list_team_20:
-    team_stats = extract_team_20_stats(PL19, team)
+    team_stats = stat23(PL19, team)
     team_stats_df = pd.DataFrame(team_stats, index=[0])
     team_stats_df['team'] = team
-    team_stats_df['year'] = 2020
+    team_stats_df['year'] = 2023
     team_stats_20[team] = team_stats_df
-
 
 
 # Scrapes Premier League standings data for a given year from Sky Sports website. It extracts team statistics
 # from the HTML table and organizes them into a list of dictionaries, with each dictionary representing statistics for one team.
 
-def scrape_premier_league_standings(year):
+def scrape_PL(year):
     url = f"https://www.skysports.com/premier-league-table/{year}"
     response = requests.get(url)
     if response.status_code != 200:
@@ -99,7 +96,7 @@ def scrape_premier_league_standings(year):
         goals_against = int(columns[7].text.strip())
         goal_difference = int(columns[8].text.strip())
         points = int(columns[9].text.strip())
-        
+        #On nome ces variables
         standings_data.append({
             'Team': team_name,
             'Matches Played': matches_played,
@@ -114,10 +111,50 @@ def scrape_premier_league_standings(year):
     
     return standings_data
 
+def stat23(standings, year):
+    team_stats_20 = {}
+    for team_data in standings:
+        team_name = team_data['Team']
+        stats = extract_team_stats_single(team_data, year)
+        team_stats_df = pd.DataFrame(stats, index=[0])
+        team_stats_df['team'] = team_name
+        team_stats_df['year'] = year
+        team_stats_20[team_name] = team_stats_df
+    
+    if not team_stats_20:
+        print("No data extracted.")
+        return None
+    
+    return pd.concat(team_stats_20.values(), ignore_index=True)
+
+def extract_team_stats_single(team_data, year):
+    match_played = team_data['Matches Played']
+    points = team_data['Points']
+    wins = team_data['Wins']
+    losses = team_data['Losses']
+    draws = team_data['Draws']
+    goals_for = team_data['Goals For']
+    goals_against = team_data['Goals Against']
+    
+    team_stats = {
+        'year': year,
+        'team': None,  
+        'match_played': match_played,
+        'position': None,  
+        'points': points,
+        'wins': wins,
+        'loses': losses,
+        'drawns': draws,
+        'goals_for': goals_for,
+        'goals_against': goals_against
+    }
+    
+    return team_stats
+  
 year = 2023
-standings = scrape_premier_league_standings(year)
+standings = scrape_PL(year)
 if standings:
-    team_stats_20 = extract_team_20_stats(standings, year)
+    team_stats_20 = stat23(standings, year)
     print(team_stats_20)
 
 # Now we try automating the budget scraping 
@@ -157,19 +194,30 @@ def scrape_premier_league_budgets(url):
     
     if all_rows:
         all_rows.pop(-1)
-    
     df = pd.concat([df, pd.DataFrame(all_rows, columns=Titles)], ignore_index=True)
     return df
+  
+from bs4 import BeautifulSoup
+import requests
+import lxml
 
+url = "https://sportune.20minutes.fr/sport-business/football/les-budgets-des-clubs-de-la-premier-league-2023-2024-312241/2"
+response = requests.get(url)
+soup = BeautifulSoup(response.content, 'lxml')
 
 # Exemple of url that could be used.
 url = "https://sportune.20minutes.fr/sport-business/football/les-budgets-des-clubs-de-la-premier-league-2023-2024-312241/2"
 budgets_df = scrape_premier_league_budgets(url)
 budgets_df.rename(columns={'Club': 'team'}, inplace=True)
-print(budgets_df)
+team_stats_20 = team_stats_20.rename(columns={'team': 'Club'})
 
+# Merging the dataframes
+merged_df = pd.merge(budgets_df, team_stats_20, on='Club', how='inner')
+merged_df.to_csv('merged_2.csv', index=False)
+merged_df.drop('position', axis=1, inplace=True)
+print (merged_df)
 
-# Cleaning the data in a merging perspective.
+# Cleaning the data
 team_stats_20.replace({'Tottenham Hotspur': 'Tottenham',
                        'Nottingham Forest **': 'Nottingham Forest',
                        'Everton *': 'Everton',
@@ -178,19 +226,11 @@ team_stats_20.replace({'Tottenham Hotspur': 'Tottenham',
                        'Brighton and Hove Albion': 'Brighton',
                        'Newcastle United': 'Newcastle'}, inplace=True)
 
-# Merging.
-merged_df = pd.merge(budgets_df, team_stats_20, left_on='Club', right_on='team', how='inner')
+merged_df = pd.merge(team_stats_20, budgets_df, on='Club', how='inner')
 print(merged_df)
-
-#Import using relative path.
-merged_df.to_csv('merged_2.csv', index=False)
-
-# Getting rid of position column.
-merged_df.drop('position', axis=1, inplace=True)
 
 # Replacing the M€ to six digits. 
 merged_df['Budget'] = pd.to_numeric(merged_df['Budget'].str.replace('M€', '')) * 1000000
-merged_df.to_csv('merged_df')
 print(merged_df)
 
 
