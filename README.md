@@ -13,13 +13,14 @@ Data Analysis on Premiere League
 
 Notre projet " Data Analysis Premier League" permet d'avoir une prédiction sur le classement final de la Premier League.
 
-Vous voulez montrer à votre ami que Liverpool n'a usurper son titre en 2022 ? Faites une prédiction sur le championnat de 2022. (Attention nous refusons toutes responsabilités si les prédictions ne vont pas dans votre sens ;). Vous ne voulez pas voir dans le passé, mais plûtot dans le futur.... pas de soucis, vous pouvez également prédire la saison en cours. (Encore une fois, aucune responsabilité si la prédiction s'avère fausse, et il y a de forte chance qu'elle le soit!!).
+Vous voulez montrer à votre ami que Liverpool n'a pas usurpé son titre en 2022 ? Faites une prédiction sur le championnat de 2022. (Attention nous refusons toute responsabilité si les prédictions ne vont pas dans votre sens ;). Vous ne voulez pas voir dans le passé, mais plutôt dans le futur ? Pas de soucis, vous pouvez également prédire la saison en cours. (Encore une fois, aucune responsabilité si la prédiction s'avère fausse, et il y a de fortes chances qu'elle le soit !!).
 
-Pour cela il suffit de rentre l'année à laquelle vous voulez prédire la saison.
+Pour cela, il suffit d'entrer l'année à laquelle vous voulez prédire la saison.
 
 Pour faire fonctionner le programme, il faut impérativement avoir un environnement qui peut lire du python.
 
-Nous reconnaissons toute fois la non fiabilité de notre modèle. Il est en effet difficile voire quasiment impossible de prédire les résultats de matchs sporttifs tant les caractéristiques intrinsèques des joueurs ne sont pas de connaissance commune. Notre travail a pour coeur son web scraping et son utilisation plutôt que la qualité des modèles prédictifs avancés.
+Nous reconnaissons toutefois la non-fiabilité de notre modèle. Il est, en effet, difficile voire quasiment impossible de prédire les résultats de matchs sportifs tant les caractéristiques intrinsèques des joueurs ne sont pas de connaissance commune. Notre travail a pour cœur son web scraping et son utilisation plutôt que la qualité des modèles prédictifs avancés.
+
 ## Structure {#structure}
 
 
@@ -41,4 +42,4 @@ Nous reconnaissons toute fois la non fiabilité de notre modèle. Il est en effe
 -   Moncef Alloaoua :
 -   Romain Sartori : [\@sartoriromain](https://github.com/sartoriromain)
 -   Paul Frezard : [\@poolo1](https://github.com/poolo1)
-er league scraped datas.
+
